@@ -34,7 +34,7 @@ pub struct WalletContext {
     pub chain_id: Option<String>,
 }
 // metamask.js contains wasm-bindgen function shims to call the browser from js side.
-#[wasm_bindgen(module = "/src/js/metamask.js")]
+#[wasm_bindgen(module = "/src/ts/metamask.ts")]
 extern "C" {
     #[wasm_bindgen(js_name = "getProviderData")]
     #[wasm_bindgen(catch)]

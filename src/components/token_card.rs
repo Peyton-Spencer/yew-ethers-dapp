@@ -9,7 +9,7 @@ use wasm_bindgen::prelude::*;
 use web_sys::HtmlInputElement;
 use yew::prelude::*;
 
-#[wasm_bindgen(module = "/src/js/metamask.js")]
+#[wasm_bindgen(module = "/src/ts/metamask.ts")]
 extern "C" {
     #[wasm_bindgen(js_name = "transfer")]
     #[wasm_bindgen(catch)]
