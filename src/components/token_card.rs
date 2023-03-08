@@ -1,29 +1,25 @@
-use yew::prelude::*;
+use crate::components::tx_card::TxCard;
+use crate::erc20::{fetch_erc20_information, ERC20Information};
+use crate::helpers::{decode_hex, wait_receipt};
+use ethers::core::{
+    types::{H256, U256},
+    utils::format_units,
+};
 use wasm_bindgen::prelude::*;
-use ethers::core::{types::{U256, H256}, utils::format_units};
 use web_sys::HtmlInputElement;
-use crate::{components::tx_card::TxCard};
-
-#[path="../lib.rs"]
-mod lib;
-use lib::{fetch_erc20_information, ERC20Information};
-
-#[path="../helpers.rs"]
-mod helpers;
-use helpers::{decode_hex, wait_receipt};
+use yew::prelude::*;
 
 #[wasm_bindgen(module = "/src/js/metamask.js")]
 extern "C" {
     #[wasm_bindgen(js_name = "transfer")]
     #[wasm_bindgen(catch)]
     pub async fn transfer(
-        token_address: String, 
-        recipient: String, 
-        amount: String, 
-        decimals: i32
+        token_address: String,
+        recipient: String,
+        amount: String,
+        decimals: i32,
     ) -> Result<JsValue, JsValue>;
 }
-
 
 #[derive(Clone, Debug, PartialEq, Properties)]
 pub struct TokenCardProps {
@@ -39,7 +35,7 @@ pub struct TokenCard {
     tx: Option<String>,
     tx_processed: Option<bool>,
     // handle refs for DOM elements
-    to: NodeRef, 
+    to: NodeRef,
     amount: NodeRef,
 }
 
@@ -47,7 +43,7 @@ pub enum TokenCardMsg {
     FillERC20(ERC20Information),
     SetError(String),
     SetTx(String),
-    SetTxProcessed(bool),    
+    SetTxProcessed(bool),
     EnableListener(JsValue),
     Transfer,
 }
@@ -56,17 +52,15 @@ impl Component for TokenCard {
     type Message = TokenCardMsg;
     type Properties = TokenCardProps;
 
-    fn create(ctx: &Context<Self>) -> Self {        
+    fn create(ctx: &Context<Self>) -> Self {
         let token_address = ctx.props().token_address.clone();
-        let user_address = ctx.props().user_address.clone(); 
+        let user_address = ctx.props().user_address.clone();
         ctx.link().send_future(async move {
             match fetch_erc20_information(&token_address, user_address).await {
-                Ok(data) => {
-                    TokenCardMsg::FillERC20(data)
-                },
+                Ok(data) => TokenCardMsg::FillERC20(data),
                 Err(_err) => {
                     TokenCardMsg::SetError("Error fetching collateral contract".to_string())
-                },
+                }
             }
         });
         Self {
@@ -88,21 +82,14 @@ impl Component for TokenCard {
                 self.decimals = res.decimals as i32;
                 self.balance = res.balance;
                 true
-            },
+            }
             TokenCardMsg::Transfer => {
                 let token_address = ctx.props().token_address.clone();
                 let to_address = self.to.cast::<HtmlInputElement>().unwrap().value();
-                let val = self.amount.cast::<HtmlInputElement>()
-                    .unwrap()
-                    .value();
+                let val = self.amount.cast::<HtmlInputElement>().unwrap().value();
                 let decimals = self.decimals.clone();
                 ctx.link().send_future(async move {
-                    match transfer(
-                        token_address,                        
-              to_address, 
-                val,
-                        decimals
-                    ).await {
+                    match transfer(token_address, to_address, val, decimals).await {
                         Ok(tx) => TokenCardMsg::EnableListener(tx),
                         Err(err) => {
                             log::error!("Error during transfer {:?}", err);
@@ -113,24 +100,25 @@ impl Component for TokenCard {
                 true
             }
             TokenCardMsg::EnableListener(tx) => {
-                ctx.link().send_message(TokenCardMsg::SetTx(tx.as_string().unwrap().clone()));
+                ctx.link()
+                    .send_message(TokenCardMsg::SetTx(tx.as_string().unwrap().clone()));
                 ctx.link().send_future(async move {
                     // JsValue(String) has 66 bytes => 0x+base64
                     let substring = &tx.as_string().unwrap()[2..]; // splits "0x"
                     let hash_from_hex = decode_hex(substring).unwrap(); // 64 bytes to 32 bytes
-                    let from_hex_h256 = H256::from_slice(&hash_from_hex); // H256                    
-                    let tx = wait_receipt(from_hex_h256).await; 
+                    let from_hex_h256 = H256::from_slice(&hash_from_hex); // H256
+                    let tx = wait_receipt(from_hex_h256).await;
                     match tx.as_ref() {
                         Ok(receipt) => {
                             log::info!("Receipt: {:?}", receipt);
                             TokenCardMsg::SetTxProcessed(true)
-                        },
+                        }
                         Err(err) => {
                             log::error!("Error {:?}", err);
                             TokenCardMsg::SetTxProcessed(false)
                         }
                     }
-                }); 
+                });
                 true
             }
             TokenCardMsg::SetTx(hash) => {
@@ -147,10 +135,19 @@ impl Component for TokenCard {
                 self.error = Some(error_msg);
                 true
             }
-        }        
+        }
     }
     fn view(&self, ctx: &Context<Self>) -> Html {
-        let Self { symbol, decimals, balance, error, to:_, amount:_, tx:_, tx_processed:_} = self;
+        let Self {
+            symbol,
+            decimals,
+            balance,
+            error,
+            to: _,
+            amount: _,
+            tx: _,
+            tx_processed: _,
+        } = self;
         html! {
             <div>
                 if let Some(error_msg) = error {
@@ -158,8 +155,8 @@ impl Component for TokenCard {
                         { error_msg }
                     </div>
                 } else {
-                    <a                        
-                        href={format!("https://rinkeby.etherscan.io/token/{}",ctx.props().token_address.clone())} 
+                    <a
+                        href={format!("https://rinkeby.etherscan.io/token/{}",ctx.props().token_address.clone())}
                         target="_blank"
                     >
                         {"Token: "}
@@ -188,12 +185,12 @@ impl Component for TokenCard {
                                     <TxCard
                                         hash = {hash.to_string()}
                                         status = {self.tx_processed}
-                                    />        
-                                },                                
+                                    />
+                                },
                                 None => html! {
                                     <button onclick={ctx.link().callback(|_| TokenCardMsg::Transfer)}>
                                         {"Transfer"}
-                                    </button>    
+                                    </button>
                                 }
                             }
                         }

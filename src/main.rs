@@ -1,17 +1,17 @@
-use yew::prelude::*;
-use ethers::core::{types::{U256, Address}, utils::format_units};
-use wasm_bindgen::prelude::*;
+use ethers::core::{
+    types::{Address, U256},
+    utils::format_units,
+};
 use js_sys::Reflect;
+use wasm_bindgen::prelude::*;
 use web_sys::HtmlInputElement;
-
+use yew::prelude::*;
 mod components;
-use crate::{ components::{token_card::TokenCard}};
-
+use components::token_card::TokenCard;
+mod erc20;
+use erc20::{fetch_erc20, get_native_balance};
 mod helpers;
 use helpers::short_address;
-
-mod lib;
-use lib::{get_native_balance, fetch_erc20};
 
 enum Msg {
     ConnectMetamask,
@@ -37,7 +37,7 @@ extern "C" {
     #[wasm_bindgen(js_name = "getProviderData")]
     #[wasm_bindgen(catch)]
     pub async fn getProviderData() -> Result<JsValue, JsValue>;
-   
+
     #[wasm_bindgen(js_name = "signMessage")]
     #[wasm_bindgen(catch)]
     pub async fn signMessage() -> Result<JsValue, JsValue>;
@@ -62,9 +62,7 @@ impl Component for Model {
 
     fn create(ctx: &Context<Self>) -> Self {
         // this ensure persistence of the connected wallet (and launches automatically)
-        ctx.link().send_future(async move {
-            Msg::ConnectMetamask
-        });
+        ctx.link().send_future(async move { Msg::ConnectMetamask });
         Self {
             msgs: None,
             balance_native: None,
@@ -74,23 +72,21 @@ impl Component for Model {
                 client: None,
                 chain_id: None,
                 address: None,
-            }
+            },
         }
     }
 
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
-        match msg {            
+        match msg {
             Msg::ConnectMetamask => {
                 log::info!("Connecting!");
                 ctx.link().send_future(async move {
                     match getProviderData().await {
-                        Ok(accs) => {
-                            Msg::SetClient(accs)
-                        },
+                        Ok(accs) => Msg::SetClient(accs),
                         Err(err) => {
                             log::error!("Error {:?}", err);
                             Msg::MessagesUser("No metamask!".to_owned())
-                        },
+                        }
                     }
                 });
                 false
@@ -113,7 +109,7 @@ impl Component for Model {
                         Ok(msg) => {
                             log::info!("Message signed {:?}", msg);
                             Msg::MessagesUser("Correctly signed".to_string())
-                        },
+                        }
                         Err(err) => {
                             log::error!("Error signing {:?}", err);
                             Msg::MessagesUser("Error while signing".to_string())
@@ -126,8 +122,8 @@ impl Component for Model {
                 ctx.link().send_future(async move {
                     match get_native_balance(address).await {
                         Ok(bal) => Msg::SetBalance(bal),
-                        Err(err) => Msg::MessagesUser(err)
-                    }   
+                        Err(err) => Msg::MessagesUser(err),
+                    }
                 });
                 false
             }
@@ -135,13 +131,13 @@ impl Component for Model {
                 self.balance_native = Some(bal);
                 true
             }
-            Msg::SetClient(provider) => {                
+            Msg::SetClient(provider) => {
                 self.wallet_context.client = Some(provider);
                 self.wallet_context.address = self.get_address();
                 self.wallet_context.chain_id = self.get_chain_id();
                 let user_address = self.get_address().unwrap();
                 ctx.link().send_message(Msg::FetchBalance(user_address));
-                true   
+                true
             }
             Msg::SearchERC20 => {
                 let poss_address = self.input.cast::<HtmlInputElement>().unwrap().value();
@@ -151,16 +147,14 @@ impl Component for Model {
                         log::info!("searching {:?}", poss_address);
                         ctx.link().send_future(async move {
                             match fetch_erc20(address_parsed).await {
-                                Ok(symbol) => {                        
+                                Ok(symbol) => {
                                     Msg::MessagesUser(format!("Found {}!", symbol));
                                     Msg::AddToken(poss_address)
-                                },
-                                Err(_err) => {
-                                    Msg::MessagesUser("Rejected!".to_string())
                                 }
-                            }    
-                        });                        
-                    },
+                                Err(_err) => Msg::MessagesUser("Rejected!".to_string()),
+                            }
+                        });
+                    }
                     Err(err) => {
                         log::info!("Error on input {:?}", err);
                         Msg::MessagesUser("Error on input".to_string());
@@ -181,7 +175,13 @@ impl Component for Model {
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
-        let Self {msgs, wallet_context, balance_native, erc20_added, input:_} = self;
+        let Self {
+            msgs,
+            wallet_context,
+            balance_native,
+            erc20_added,
+            input: _,
+        } = self;
         let link = ctx.link();
         html! {
             <div>
@@ -189,17 +189,17 @@ impl Component for Model {
                 if let Some(address) = &self.get_address() {
                     <>{short_address(&address)}</>
                 } else {
-                    <button 
+                    <button
                         onclick={link.callback(|_| {
                             Msg::ConnectMetamask
                         })}
-                    >                            
+                    >
                         {"Connect"}
                     </button>
                 }
                 if let Some(chain) =  &self.get_chain_id() {
                     if chain != "0x4" {
-                        <div>                            
+                        <div>
                             {" connected to chain "}{chain}
                             <button
                                 onclick={link.callback(|_| {
@@ -235,7 +235,7 @@ impl Component for Model {
 
                 if erc20_added.len() > 0 {
                     <div>
-                        {self.list_of_added_erc20()}                    
+                        {self.list_of_added_erc20()}
                     </div>
                 }
                 <h3>{"Messages: "}</h3>
@@ -251,17 +251,12 @@ impl Component for Model {
 impl Model {
     fn get_chain_id(&self) -> Option<String> {
         if let Some(client) = &self.wallet_context.client {
-            match Reflect::get(
-                client.as_ref(), 
-                &JsValue::from("chainId")
-            ) {
-                Ok(val) => {
-                    match val.as_string() {
-                        Some(chain) => Some(chain),
-                        None => None
-                    }
-                }
-                Err(_err) => None
+            match Reflect::get(client.as_ref(), &JsValue::from("chainId")) {
+                Ok(val) => match val.as_string() {
+                    Some(chain) => Some(chain),
+                    None => None,
+                },
+                Err(_err) => None,
             }
         } else {
             None
@@ -269,27 +264,19 @@ impl Model {
     }
     fn get_address(&self) -> Option<String> {
         if let Some(client) = &self.wallet_context.client {
-            match Reflect::get(
-                client.as_ref(), 
-                &JsValue::from("selectedAddress")
-            ) {
-                Ok(val) => {
-                    match val.as_string() {
-                        Some(address) => Some(address),
-                        None => None
-                    }
+            match Reflect::get(client.as_ref(), &JsValue::from("selectedAddress")) {
+                Ok(val) => match val.as_string() {
+                    Some(address) => Some(address),
+                    None => None,
                 },
-                Err(_err) => None
+                Err(_err) => None,
             }
         } else {
             None
         }
     }
     fn list_of_added_erc20(&self) -> Html {
-        let erc20_tokens = self.erc20_added
-            .iter()
-            .map(|data| 
-        {
+        let erc20_tokens = self.erc20_added.iter().map(|data| {
             html! {
                 <div>
                     <div>
@@ -306,12 +293,10 @@ impl Model {
                 { for erc20_tokens }
             </div>
         }
-
     }
 }
 
-
 fn main() {
     wasm_logger::init(wasm_logger::Config::new(log::Level::Trace));
-    yew::start_app::<Model>();
+    yew::Renderer::<Model>::new().render();
 }
