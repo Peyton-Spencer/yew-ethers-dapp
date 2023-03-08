@@ -8,7 +8,7 @@ use std::sync::Arc;
 //
 /////////////////////////////////////////////////////////////////
 pub async fn get_native_balance(address: String) -> Result<U256, String> {
-    let endpoint = "wss://rinkeby.infura.io/ws/v3/88371c5dbe284f97bb2789cf7f9ca6f1";
+    let endpoint = dotenv!("GOERLI_WEBSOCKET_URL");
     let provider = Provider::new(Ws::connect(endpoint).await.unwrap());
     let client = Arc::new(provider);
     let address = address.parse::<Address>().unwrap();
@@ -38,7 +38,7 @@ pub struct ERC20Information {
 }
 
 pub async fn fetch_erc20(token_address: H160) -> Result<String, String> {
-    let endpoint = "wss://rinkeby.infura.io/ws/v3/88371c5dbe284f97bb2789cf7f9ca6f1";
+    let endpoint = dotenv!("GOERLI_WEBSOCKET_URL");
     let provider = Provider::new(Ws::connect(endpoint).await.unwrap());
     let client = Arc::new(provider);
     let token_contract = IERC20::new(token_address, Arc::clone(&client));
@@ -52,7 +52,7 @@ pub async fn fetch_erc20_information(
     token_address: &str,
     user_address: String,
 ) -> Result<ERC20Information, String> {
-    let endpoint = "wss://rinkeby.infura.io/ws/v3/88371c5dbe284f97bb2789cf7f9ca6f1";
+    let endpoint = dotenv!("GOERLI_WEBSOCKET_URL");
     let provider = Provider::new(Ws::connect(endpoint).await.unwrap());
     let client = Arc::new(provider);
     //   let client = Provider::<Http>::try_from("https://rpc.gnosischain.com");//?

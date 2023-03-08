@@ -12,10 +12,12 @@ mod erc20;
 use erc20::{fetch_erc20, get_native_balance};
 mod helpers;
 use helpers::short_address;
+#[macro_use]
+extern crate dotenv_codegen;
 
 enum Msg {
     ConnectMetamask,
-    ConnectRinkeby,
+    ConnectGoerli,
     SignMessage,
     SearchERC20,
     AddToken(String),
@@ -42,9 +44,9 @@ extern "C" {
     #[wasm_bindgen(catch)]
     pub async fn signMessage() -> Result<JsValue, JsValue>;
 
-    #[wasm_bindgen(js_name = "setRinkeby")]
+    #[wasm_bindgen(js_name = "setGoerli")]
     #[wasm_bindgen(catch)]
-    pub async fn setRinkeby() -> Result<JsValue, JsValue>;
+    pub async fn setGoerli() -> Result<JsValue, JsValue>;
 
 }
 
@@ -91,9 +93,9 @@ impl Component for Model {
                 });
                 false
             }
-            Msg::ConnectRinkeby => {
+            Msg::ConnectGoerli => {
                 ctx.link().send_future(async {
-                    match setRinkeby().await {
+                    match setGoerli().await {
                         Ok(_) => Msg::ConnectMetamask, // not updating the state
                         Err(err) => {
                             log::error!("Error {:?}", err);
@@ -198,14 +200,14 @@ impl Component for Model {
                     </button>
                 }
                 if let Some(chain) =  &self.get_chain_id() {
-                    if chain != "0x4" {
+                    if chain != "0x5" {
                         <div>
                             {" connected to chain "}{chain}
                             <button
                                 onclick={link.callback(|_| {
-                                    Msg::ConnectRinkeby
+                                    Msg::ConnectGoerli
                                 })}
-                            >{"Change to Rinkeby"}</button>
+                            >{"Change to Goerli"}</button>
                         </div>
                     } else {
                         if let Some(balance) = balance_native {
@@ -221,7 +223,7 @@ impl Component for Model {
                 // as an example, rDAI
                 if let Some(user_address) = &wallet_context.address {
                     <TokenCard
-                        token_address = {"0xc7AD46e0b8a400Bb3C915120d284AafbA8fc4735".to_string()}
+                        token_address = {"0x07865c6e87b9f70255377e024ace6630c1eaa37f".to_string()}
                         user_address = {user_address.clone()}
                     />
                 }
@@ -229,7 +231,7 @@ impl Component for Model {
                 <input
                     type="text"
                     ref={&self.input}
-                    placeholder="Rinkeby ERC20 address"
+                    placeholder="Goerli ERC20 address"
                     onchange={ctx.link().callback(|_| Msg::SearchERC20)}
                 />
 

@@ -29,13 +29,13 @@ export async function signMessage() {
     return flatSignature;
 }
 
-export async function setRinkeby() {
+export async function setGoerli() {
   try {
       await window.ethereum.request({
         method: 'wallet_switchEthereumChain',
         params: [
           {
-            chainId: "0x4",
+            chainId: "0x5",
           },
         ],
       });

@@ -156,7 +156,7 @@ impl Component for TokenCard {
                     </div>
                 } else {
                     <a
-                        href={format!("https://rinkeby.etherscan.io/token/{}",ctx.props().token_address.clone())}
+                        href={format!("{}/token/{}",dotenv!("GOERLI_EXPLORER_URL"), ctx.props().token_address.clone())}
                         target="_blank"
                     >
                         {"Token: "}

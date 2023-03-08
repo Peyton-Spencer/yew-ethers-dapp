@@ -13,7 +13,7 @@ pub fn tx_box(props: &TxProps) -> Html {
         <div>
             <header>
                 <a
-                    href={format!("https://rinkeby.etherscan.io/tx/{}",props.hash.clone())}
+                    href={format!("{}/tx/{}",dotenv!("GOERLI_EXPLORER_URL"),props.hash.clone())}
                     target="_blank"
                 >
 
